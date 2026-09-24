@@ -1,5 +1,14 @@
+from collections import Counter
+from multiprocessing import Pool
 import os
+import regex as re
 from typing import BinaryIO
+
+from llm.constants import END_OF_TEXT_TOKEN
+
+
+# Regex-based pre-tokenizer from github.com/openai/tiktoken/pull/234/files
+PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
 
 def find_chunk_boundaries(
@@ -49,14 +58,48 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-## Usage
-with open(..., "rb") as f:
-    num_processes = 4
-    boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
+def pretokenize(text: str) -> dict[tuple[bytes, ...], int]:
+    matches = re.finditer(PAT, text)
+    freqs = Counter()
+    for m in matches:
+        m_bytes = tuple(bytes([b]) for b in m.group().encode("utf-8"))
+        freqs[m_bytes] += 1
+    return freqs
 
-    # The following is a serial implementation, but you can parallelize this
-    # by sending each start/end pair to a set of processes.
-    for start, end in zip(boundaries[:-1], boundaries[1:]):
+
+def pretokenize_chunk(path: str, start: int, end: int, special_tokens: list[str]) -> dict[tuple[bytes, ...], int]:
+    with open(path, "rb") as f:
         f.seek(start)
         chunk = f.read(end - start).decode("utf-8", errors="ignore")
-        # Run pre-tokenization on your chunk and store the counts for each pre-token
+
+    if not special_tokens:
+        return pretokenize(chunk)
+
+    splits = re.split("|".join([re.escape(t) for t in special_tokens]), chunk)
+    freqs = Counter()
+    for text in splits:
+        freqs.update(pretokenize(text))
+    return freqs
+
+
+def run_pretokenizer(path: str, num_processes: int, special_tokens: list[str]) -> dict[tuple[bytes, ...], int]:
+    with open(path, "rb") as f:
+        boundaries = find_chunk_boundaries(f, num_processes, END_OF_TEXT_TOKEN.encode("utf-8"))
+        start_end_pairs = [(start, end) for start, end in zip(boundaries[:-1], boundaries[1:])]
+
+    with Pool(processes=num_processes) as pool:
+        results = pool.starmap(
+            pretokenize_chunk,
+            [(path, start, end, special_tokens) for start, end in start_end_pairs],
+        )
+
+    freqs = Counter()
+    for result in results:
+        freqs.update(result)
+
+    return freqs
+
+
+if __name__ == "__main__":
+    path = "data/TinyStoriesV2-GPT4-valid.txt"
+    freqs = run_pretokenizer(path, 4, [END_OF_TEXT_TOKEN])
