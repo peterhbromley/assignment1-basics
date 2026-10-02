@@ -115,8 +115,8 @@ def train_bpe(
 
     # Initialize pair counts and pair-to-word mapping (one full pass through pretokens)
     for word in pretokens:
-        for l, r in list(zip(word, word[1:])):
-            pair = (l, r)
+        for left, right in list(zip(word, word[1:])):
+            pair = (left, right)
             byte_pair_counts[pair] += pretokens[word]
             byte_pair_to_words[pair].add(word)
 
@@ -124,8 +124,8 @@ def train_bpe(
         # pair to merge is max count, ties broken lexicographically.
         # so key is count first, then the pair itself
         merge_pair = max(byte_pair_counts, key=lambda pair: (byte_pair_counts[pair], pair))
-        l, r = merge_pair
-        merged = l + r
+        left, right = merge_pair
+        merged = left + right
 
         vocab[len(vocab)] = merged
         merges.append(merge_pair)
@@ -147,7 +147,7 @@ def train_bpe(
             while i < len(affected_word):
                 # If we are at the merge pair, then merge and append to the new word
                 # Else keep the same and move on
-                if i + 1 < len(affected_word) and affected_word[i] == l and affected_word[i + 1] == r:
+                if i + 1 < len(affected_word) and affected_word[i] == left and affected_word[i + 1] == right:
                     new_word.append(merged)
                     i += 2
                 else:
@@ -179,13 +179,13 @@ def merge_pretoken(
         if best_pair is None:
             done_merging = True
         else:
-            l, r = best_pair
-            merged = l + r
+            left, right = best_pair
+            merged = left + right
             new_word = []
             i = 0
             while i < len(word):
                 # If we match the merge pair, then merge and append to the new word
-                if i + 1 < len(word) and word[i] == l and word[i + 1] == r:
+                if i + 1 < len(word) and word[i] == left and word[i + 1] == right:
                     new_word.append(merged)
                     i += 2
                 else:
