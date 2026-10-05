@@ -25,7 +25,7 @@ def scaled_dot_product_attention(
     # Put -inf in matrix positions that can't be attended to (e.g. token comes after
     # current token). -inf will become 0 after softmax.
     if mask is not None:
-        scores = torch.masked_fill(scores, not mask, -torch.inf)
+        scores = torch.masked_fill(scores, ~mask, -torch.inf)
 
     return einsum(softmax(scores, dim=-1), V, "... queries keys, ... keys d_v -> ... queries d_v")
 

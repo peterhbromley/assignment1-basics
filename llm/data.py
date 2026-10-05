@@ -17,4 +17,7 @@ def get_batch(
     batch_start_idxs = np.random.randint(0, len(token_ids) - context_length, batch_size)
     batch_idxs = batch_start_idxs[:, None] + np.arange(context_length + 1)[None, :]
     seqs = token_ids[batch_idxs]
-    return torch.from_numpy(seqs[:, :-1]).to(device=device), torch.from_numpy(seqs[:, 1:]).to(device=device)
+    return (
+        torch.from_numpy(seqs[:, :-1]).to(device=device, dtype=torch.long), 
+        torch.from_numpy(seqs[:, 1:]).to(device=device, dtype=torch.long)
+    )
