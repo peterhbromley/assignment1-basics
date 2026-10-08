@@ -44,6 +44,27 @@ class TransformerBlock(nn.Module):
 
 
 class Transformer(nn.Module):
+    @classmethod
+    def from_config(
+        cls,
+        config: dict,
+        *,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> "Transformer":
+        """Construct from architecture settings, ignoring other training settings."""
+        return cls(
+            vocab_size=config["vocab_size"],
+            context_length=config["context_length"],
+            num_layers=config["num_layers"],
+            d_model=config["d_model"],
+            num_heads=config["num_heads"],
+            d_ff=config["d_ff"],
+            theta=config["rope_theta"],
+            device=device,
+            dtype=dtype,
+        )
+
     def __init__(
         self,
         vocab_size: int,

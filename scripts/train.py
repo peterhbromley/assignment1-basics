@@ -260,17 +260,7 @@ def main() -> None:
     data_train = np.load(args.train_path, mmap_mode="r")
     data_val = np.load(args.val_path, mmap_mode="r")
     
-    model = Transformer(
-        vocab_size=args.vocab_size,
-        context_length=args.context_length,
-        num_layers=args.num_layers,
-        d_model=args.d_model,
-        num_heads=args.num_heads,
-        d_ff=args.d_ff,
-        theta=args.rope_theta,
-        device=device,
-        dtype=dtype,
-    )
+    model = Transformer.from_config(vars(args), device=device, dtype=dtype)
     optimizer = AdamW(
         params=model.parameters(), 
         lr=args.max_lr,
